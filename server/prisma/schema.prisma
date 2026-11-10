@@ -1,0 +1,253 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  CUSTOMER
+  PHARMACIST
+}
+
+enum TransactionType {
+  INITIAL
+  PURCHASE
+  CORRECTION
+  REQUEST_FULFILLMENT
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COUNTER_PROPOSED
+  CUSTOMER_ACCEPTED
+  CUSTOMER_DECLINED
+  FULFILLED
+  COMPLETED
+  CANCELLED
+}
+
+enum AiActionType {
+  ADD_STOCK
+  CORRECTION
+}
+
+enum AiActionStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  pharmacy      Pharmacy?
+  medicines     Medicine[]
+  familyMembers FamilyMember[]
+  requests      ReplenishmentRequest[] @relation("CustomerRequests")
+  notifications Notification[]
+  activities    Activity[]
+  aiActions     AiPendingAction[]
+  chatMessages  ChatMessage[]
+}
+
+model Pharmacy {
+  id            String   @id @default(cuid())
+  ownerId       String   @unique
+  name          String
+  address       String
+  city          String
+  pincode       String
+  phone         String
+  licenseNumber String   @unique
+  description   String?
+  isActive      Boolean  @default(true)
+  isApproved    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  owner    User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  catalog  PharmacyMedicine[]
+  requests ReplenishmentRequest[]
+}
+
+model FamilyMember {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  relation  String
+  createdAt DateTime @default(now())
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  medicines Medicine[]
+
+  @@index([userId])
+}
+
+model Medicine {
+  id              String   @id @default(cuid())
+  userId          String
+  familyMemberId  String?
+  name            String
+  strength        String
+  form            String
+  unitLabel       String   @default("tablet")
+  confirmedStock  Int      @default(0)
+  dailyUnits      Int      @default(0)
+  dosageSchedule  String?
+  reorderThreshold Int     @default(5)
+  lastConfirmedAt DateTime @default(now())
+  isActive        Boolean  @default(true)
+  lowStockNotified Boolean @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyMember   FamilyMember?          @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
+  transactions   InventoryTransaction[]
+  requests       ReplenishmentRequest[]
+  aiActions      AiPendingAction[]
+
+  @@index([userId, isActive])
+}
+
+model InventoryTransaction {
+  id                      String          @id @default(cuid())
+  medicineId              String
+  type                    TransactionType
+  quantityChange          Int
+  previousStock           Int
+  newStock                Int
+  note                    String?
+  replenishmentRequestId  String?         @unique
+  createdAt               DateTime        @default(now())
+
+  medicine             Medicine              @relation(fields: [medicineId], references: [id], onDelete: Cascade)
+  replenishmentRequest ReplenishmentRequest? @relation(fields: [replenishmentRequestId], references: [id], onDelete: SetNull)
+
+  @@index([medicineId, createdAt])
+}
+
+model PharmacyMedicine {
+  id                String   @id @default(cuid())
+  pharmacyId        String
+  name              String
+  strength          String
+  form              String
+  unitLabel         String   @default("tablet")
+  quantityAvailable Int      @default(0)
+  price             Float?
+  isAvailable       Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  pharmacy Pharmacy              @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  requests ReplenishmentRequest[]
+
+  @@unique([pharmacyId, name, strength, form])
+  @@index([pharmacyId, isAvailable])
+}
+
+model ReplenishmentRequest {
+  id                  String        @id @default(cuid())
+  customerId          String
+  pharmacyId          String
+  medicineId          String?
+  pharmacyMedicineId  String?
+  medicineName        String
+  strength            String
+  unitLabel           String        @default("tablet")
+  quantityRequested   Int
+  quantityProposed    Int?
+  status              RequestStatus @default(PENDING)
+  note                String?
+  pharmacistNote      String?
+  respondedAt         DateTime?
+  proposalRespondedAt DateTime?
+  fulfilledAt         DateTime?
+  completedAt         DateTime?
+  inventoryAppliedAt  DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  customer         User                @relation("CustomerRequests", fields: [customerId], references: [id], onDelete: Cascade)
+  pharmacy         Pharmacy            @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  medicine         Medicine?           @relation(fields: [medicineId], references: [id], onDelete: SetNull)
+  pharmacyMedicine PharmacyMedicine?   @relation(fields: [pharmacyMedicineId], references: [id], onDelete: SetNull)
+  inventoryTransaction InventoryTransaction?
+
+  @@index([customerId, status])
+  @@index([pharmacyId, status])
+}
+
+model Notification {
+  id                   String   @id @default(cuid())
+  userId               String
+  type                 String
+  title                String
+  message              String
+  isRead               Boolean  @default(false)
+  replenishmentRequestId String?
+  createdAt            DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  message   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model AiPendingAction {
+  id        String         @id @default(cuid())
+  userId    String
+  medicineId String?
+  type      AiActionType
+  payload   Json
+  status    AiActionStatus @default(PENDING)
+  createdAt DateTime       @default(now())
+  expiresAt DateTime
+  updatedAt DateTime       @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  medicine Medicine? @relation(fields: [medicineId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  role      ChatRole
+  content   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
