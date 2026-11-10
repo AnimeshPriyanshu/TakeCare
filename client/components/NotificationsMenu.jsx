@@ -71,19 +71,20 @@ export default function NotificationsMenu() {
 
   return (
     <div className="relative" ref={containerRef}>
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon"
         onClick={() => setOpen((value) => !value)}
-        className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
         aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
+        icon={Bell}
       >
-        <Bell className="h-5 w-5" />
         {unread > 0 ? (
           <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
             {unread > 9 ? "9+" : unread}
           </span>
         ) : null}
-      </button>
+      </Button>
 
       {open ? (
         <div className="absolute right-0 z-40 mt-2 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10">

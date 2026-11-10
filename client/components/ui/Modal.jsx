@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { X } from "lucide-react";
+import Button from "./Button";
 
 const SIZES = {
   sm: "max-w-sm",
@@ -59,14 +60,14 @@ export default function Modal({
               <p className="mt-0.5 text-sm text-slate-500">{description}</p>
             ) : null}
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
             aria-label="Close dialog"
-          >
-            <X className="h-5 w-5" />
-          </button>
+            icon={X}
+          />
         </div>
         <div className="max-h-[70vh] overflow-y-auto px-5 py-5 sm:px-6">{children}</div>
         {footer ? (

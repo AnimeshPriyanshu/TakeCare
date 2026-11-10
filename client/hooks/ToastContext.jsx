@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, Info, X } from "lucide-react";
+import Button from "@/components/ui/Button";
 
 const ToastContext = createContext(null);
 
@@ -72,14 +73,14 @@ export function ToastProvider({ children }) {
                   <p className="mt-0.5 text-sm text-slate-600">{item.message}</p>
                 ) : null}
               </div>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon"
                 onClick={() => dismiss(item.id)}
-                className="rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
                 aria-label="Dismiss notification"
-              >
-                <X className="h-4 w-4" />
-              </button>
+                icon={X}
+              />
             </div>
           );
         })}

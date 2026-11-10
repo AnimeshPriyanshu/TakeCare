@@ -2,11 +2,11 @@
 
 **AI-assisted medicine inventory and replenishment for households and pharmacies.**
 
-TakeCare is a hackathon-ready, full-stack MVP. Customers track a family medicine cabinet with an estimated-stock engine, browse approved pharmacies, and run replenishment requests through a guarded workflow. Pharmacists manage their public catalog and respond to requests. A grounded, deterministic assistant answers questions from live data and never changes inventory without explicit confirmation.
+TakeCare is a full-stack application that helps families track medicine inventory with live estimates, browse approved pharmacies, and run replenishment requests through a guarded workflow. Pharmacists manage their public catalog and respond to requests. A grounded, deterministic assistant answers questions from live data and never changes inventory without explicit confirmation.
 
 ---
 
-## What is implemented
+## Features
 
 - **Customer workspace**
   - Dashboard with active medicines, estimated units, low-stock signals, active requests and activity.
@@ -15,7 +15,8 @@ TakeCare is a hackathon-ready, full-stack MVP. Customers track a family medicine
   - Pharmacy directory with search, detail pages and catalog availability.
   - Replenishment request flow: create → pharmacist response → proposal accept/decline → fulfilment → **customer confirms receipt**.
   - Requests list with status filtering, timeline and duplicate-safe receipt confirmation.
-  - Demo assistant: stock, low stock, pending requests, pharmacy search, purchase/correction actions with confirmation.
+  - Deterministic assistant: stock counts, low-stock lists, pending requests, pharmacy search, purchase/correction actions with confirmation.
+  - Voice input via Gnani Prisma v2.5 with editable transcripts and review-before-send.
 - **Pharmacist workspace**
   - Onboarding/profile, public listing status, catalog CRUD and availability toggles.
   - Request queue with accept, reject, propose a different quantity, mark fulfilled, notes and detail view.
@@ -24,7 +25,7 @@ TakeCare is a hackathon-ready, full-stack MVP. Customers track a family medicine
   - JWT auth in an httpOnly cookie, bcrypt passwords, role-based authorization.
   - Zod input validation, centralized errors, ownership checks on every query.
   - Append-only inventory ledger; receipt confirmation is exactly-once.
-  - Seeded demo data, notifications, activity feed, responsive Tailwind UI.
+  - Notifications, activity feed, responsive Tailwind UI.
 
 ---
 
@@ -36,7 +37,7 @@ TakeCare is a hackathon-ready, full-stack MVP. Customers track a family medicine
 | Backend | Node.js, Express 5 (ESM), Prisma ORM 7, Zod 4 |
 | Database | PostgreSQL 18 (Docker, host port `5433`) |
 | Auth | JWT, bcryptjs, httpOnly SameSite=Lax cookie |
-| AI | Deterministic demo engine over live DB data (no live LLM required) |
+| AI | Deterministic reasoning over live DB data plus Gnani Prisma v2.5 speech-to-text |
 
 ---
 
@@ -44,7 +45,7 @@ TakeCare is a hackathon-ready, full-stack MVP. Customers track a family medicine
 
 ### Prerequisites
 
-- Node.js 20+ (tested on Node 26)
+- Node.js 20+
 - npm 10+
 - Docker Desktop (for the isolated PostgreSQL container)
 
@@ -56,27 +57,25 @@ npm run install:all
 
 ### 2. Configure environment
 
-If files do not already exist:
+Copy the example files and fill in your values:
 
 ```bash
 cp server/.env.example server/.env
 cp client/.env.example client/.env.local
 ```
 
-The defaults match the Docker database and local ports:
+**Required variables:**
 
-```dotenv
-# server/.env
-DATABASE_URL="postgresql://takecare:takecare_dev_password@localhost:5433/takecare"
-JWT_SECRET="takecare_local_dev_secret_change_me_please_1234567890"
-PORT=3001
-CLIENT_ORIGIN="http://localhost:3000"
-```
+| File | Variable | Description |
+| --- | --- | --- |
+| `server/.env` | `DATABASE_URL` | PostgreSQL connection string |
+| `server/.env` | `JWT_SECRET` | Long random string for signing JWTs |
+| `server/.env` | `GNANI_API_KEY` | Speech-to-text API key (server-side only) |
+| `server/.env` | `PORT` | API port (default: 3001) |
+| `server/.env` | `CLIENT_ORIGIN` | Frontend origin for CORS (default: `http://localhost:3000`) |
+| `client/.env.local` | `NEXT_PUBLIC_API_URL` | API base URL (default: `http://localhost:3001/api`) |
 
-```dotenv
-# client/.env.local
-NEXT_PUBLIC_API_URL="http://localhost:3001/api"
-```
+**Note:** Never commit real secrets. The `.env` files are gitignored. Use strong random values for `JWT_SECRET` in production.
 
 ### 3. Start PostgreSQL
 
@@ -84,9 +83,9 @@ NEXT_PUBLIC_API_URL="http://localhost:3001/api"
 npm run db:up
 ```
 
-This creates or starts the `takecare-postgres` container with user `takecare`, password `takecare_dev_password`, database `takecare`, on **port 5433**.
+This creates/starts the `takecare-postgres` Docker container on port **5433** with the project's default credentials.
 
-### 4. Apply the schema and seed demo data
+### 4. Apply schema and seed demo data
 
 ```bash
 npm run db:migrate
@@ -108,28 +107,6 @@ You can also run them separately:
 ```bash
 npm run dev:server
 npm run dev:client
-```
-
----
-
-## Demo accounts
-
-All seeded accounts use the password **`Password123!`**.
-
-| Role | Email | Notes |
-| --- | --- | --- |
-| Customer | `aarav@takecare.demo` | Primary demo user with medicines and requests |
-| Customer | `meera@takecare.demo` | Second customer |
-| Pharmacist | `raghav@takecare.demo` | CarePlus Pharmacy (approved, catalog, requests) |
-| Pharmacist | `sana@takecare.demo` | GreenLeaf Pharmacy (approved) |
-| Pharmacist | `vikram@takecare.demo` | Wellness Chemist (pending approval, hidden from directory) |
-
-Reset the demo at any time:
-
-```bash
-npm run db:seed
-# or
-sh scripts/demo-reset.sh
 ```
 
 ---
@@ -158,13 +135,13 @@ PENDING ──accept──> ACCEPTED ──fulfil──> FULFILLED ──custome
 - `estimatedStock = max(0, confirmedStock − dailyUnits × floor(daysSinceLastConfirmation))`.
 - Estimated consumption never writes to the ledger.
 - `confirmedStock` changes only through `INITIAL`, `PURCHASE`, `CORRECTION` or `REQUEST_FULFILLMENT` transactions.
-- Low stock means `estimatedStock <= reorderThreshold`; notifications are de-duplicated until stock recovers.
+- Low stock means `estimatedStock ≤ reorderThreshold`; notifications are de-duplicated until stock recovers.
 
 ---
 
-## AI assistant
+## AI assistant and voice input
 
-The assistant is intentionally a **deterministic demo engine** (`mode: "demo"`) rather than a live LLM. It:
+The text assistant is an intentionally **deterministic engine** (`mode: "demo"`) rather than a live LLM. It:
 
 - Reads live medicines, requests and pharmacy catalogs from the database.
 - Handles stock counts, low-stock lists, pending requests, pharmacy search and purchase/correction intents.
@@ -173,16 +150,25 @@ The assistant is intentionally a **deterministic demo engine** (`mode: "demo"`) 
 - Refuses medical/dosage advice and never recommends a dosage change.
 - Never fabricates availability or quantities.
 
+Voice input uses the real **Gnani Prisma v2.5** speech-to-text API:
+
+- `POST /api/ai/transcribe` is authenticated and customer-only, accepts `audio_file` with multer memory storage, and forwards the audio to `https://api.vachana.ai/stt/v3` using the server-side `X-API-Key-ID` header.
+- Supported languages are English (India) `en-IN` and Hindi `hi-IN`. Hinglish can be transcribed with either language setting.
+- Supported upload formats are WAV, MP3, OGG, FLAC, AAC and M4A; audio is limited to 30 seconds and 8 MB.
+- Browser recordings are decoded and converted locally to 16 kHz mono WAV before upload, so WebM is never sent to Prisma.
+- The transcript is inserted into the chat input for review and editing. It is **not** sent automatically and never changes inventory; any stock update still requires the existing explicit confirmation card.
+- `GNANI_API_KEY` is read only on the server via `process.env.GNANI_API_KEY`. It is never exposed to the browser or included in API responses.
+
+Voice input requires `GNANI_API_KEY`. Text chat continues to work without it.
+
 Example prompts:
 
-- “How many tablets do I have left?”
-- “Which medicines are running low?”
-- “Show my pending requests”
-- “I purchased 10 more tablets of Metformin”
-- “Set Metformin stock to 44”
-- “Find a pharmacy listing Amoxicillin”
-
-The UI clearly labels the demo mode. `OPENAI_API_KEY` is reserved for a future live provider but is not required.
+- "How many tablets do I have left?"
+- "Which medicines are running low?"
+- "Show my pending requests"
+- "I purchased 10 more tablets of Metformin"
+- "Set Metformin stock to 44"
+- "Find a pharmacy listing Amoxicillin"
 
 ---
 
@@ -197,15 +183,15 @@ TakeCare/
 │   │   └── pharmacist/       dashboard, pharmacy profile, catalog, requests
 │   ├── components/           UI primitives + domain components
 │   ├── hooks/                Auth, Toast, useApi
-│   └── lib/                  fetch client, formatting, status metadata
+│   └── lib/                  fetch client, audio-to-WAV conversion, formatting
 ├── server/                   Express 5 + Prisma 7 API
 │   ├── prisma/               schema, migrations, seed
 │   ├── src/
 │   │   ├── config/           validated environment
 │   │   ├── controllers/      HTTP handlers
-│   │   ├── middleware/       auth, RBAC, validation, errors
+│   │   ├── middleware/       auth, RBAC, audio upload, validation, errors
 │   │   ├── routes/           API routes
-│   │   ├── services/         stock, inventory, requests, AI, notifications
+│   │   ├── services/         stock, inventory, requests, AI, transcription, notifications
 │   │   ├── schemas/          Zod schemas
 │   │   └── utils/            helpers
 │   └── prisma.config.mjs
@@ -245,7 +231,7 @@ Base URL: `http://localhost:3001/api` · Health: `http://localhost:3001/health`
 
 ## Demo walkthrough
 
-See [DEMO.md](./DEMO.md) for a 5–7 minute presenter script that covers both roles, the full request lifecycle and the AI assistant.
+See [DEMO.md](./DEMO.md) for a presenter script that covers both roles, the full request lifecycle and the AI assistant.
 
 ---
 
@@ -259,6 +245,8 @@ See [DEMO.md](./DEMO.md) for a 5–7 minute presenter script that covers both ro
 | Login succeeds but requests fail | Use `http://localhost` for both apps so the cookie is shared; the API client sends credentials. |
 | Demo data looks inconsistent | Run `npm run db:seed` to reset. |
 | Prisma client import error | Run `npm --prefix server run db:generate`. |
+| Voice input says transcription is not configured | Set `GNANI_API_KEY` in `server/.env` and restart the API. |
+| Microphone access denied or recording unavailable | Allow microphone permission in the browser, or use the audio-upload button. |
 
 ---
 

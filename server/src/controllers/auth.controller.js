@@ -45,7 +45,7 @@ export const register = asyncHandler(async (req, res) => {
           phone: pharmacy.phone,
           licenseNumber: pharmacy.licenseNumber,
           description: pharmacy.description || null,
-          isApproved: true,
+          isApproved: false,
           isActive: true,
         },
       });

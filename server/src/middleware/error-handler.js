@@ -1,4 +1,4 @@
-import { Prisma } from "../generated/prisma/client.ts";
+import { Prisma } from "../generated/prisma/client.js";
 import { HttpError } from "../utils/http-error.js";
 import { env } from "../config/env.js";
 

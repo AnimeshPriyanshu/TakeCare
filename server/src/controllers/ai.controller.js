@@ -4,6 +4,7 @@ import {
   getChatHistory,
   handleChat,
 } from "../services/ai.service.js";
+import { transcribeAudio } from "../services/transcription.service.js";
 import { asyncHandler } from "../utils/async-handler.js";
 
 export const chat = asyncHandler(async (req, res) => {
@@ -24,4 +25,12 @@ export const cancelAction = asyncHandler(async (req, res) => {
 export const history = asyncHandler(async (req, res) => {
   const messages = await getChatHistory(req.user.id);
   res.json({ messages });
+});
+
+export const transcribe = asyncHandler(async (req, res) => {
+  const result = await transcribeAudio({
+    file: req.file,
+    languageCode: req.body.language_code,
+  });
+  res.json(result);
 });

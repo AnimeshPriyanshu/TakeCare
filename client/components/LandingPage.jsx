@@ -151,13 +151,13 @@ export default function LandingPage() {
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
-                  href={user ? dashboardHref : "/register"}
+                  href="/register"
                   className={buttonClasses({
                     size: "lg",
                     className: "bg-white text-slate-900 hover:bg-slate-100",
                   })}
                 >
-                  {user ? "Open my workspace" : "Create a free account"}
+                  Get Started
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link

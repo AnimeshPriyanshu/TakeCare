@@ -7,8 +7,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
   CLIENT_ORIGIN: z.string().default("http://localhost:3000"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  OPENAI_API_KEY: z.string().optional().default(""),
-  OPENAI_MODEL: z.string().default("gpt-4o-mini"),
+  GNANI_API_KEY: z.string().optional().default(""),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -25,7 +24,6 @@ export const env = {
   port: parsed.data.PORT,
   clientOrigin: parsed.data.CLIENT_ORIGIN,
   nodeEnv: parsed.data.NODE_ENV,
-  openAiKey: parsed.data.OPENAI_API_KEY,
-  openAiModel: parsed.data.OPENAI_MODEL,
+  gnaniApiKey: parsed.data.GNANI_API_KEY,
   isProduction: parsed.data.NODE_ENV === "production",
 };

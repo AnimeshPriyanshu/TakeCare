@@ -3,7 +3,7 @@
 Base URL: `http://localhost:3001/api`
 Health check: `GET http://localhost:3001/health`
 
-All request and response bodies are JSON. Authentication uses the `takecare_token` httpOnly cookie set by login/register. For API tooling, an `Authorization: Bearer <jwt>` header is also accepted.
+All request and response bodies are JSON except the speech-to-text upload, which uses `multipart/form-data`. Authentication uses the `takecare_token` httpOnly cookie set by login/register. For API tooling, an `Authorization: Bearer <jwt>` header is also accepted.
 
 Every error uses this shape:
 
@@ -27,6 +27,10 @@ Every error uses this shape:
 | `403` | Wrong role |
 | `404` | Not found or not owned by the caller |
 | `409` | Invalid state transition, duplicate, or already applied |
+| `413` | Audio upload exceeds 8 MB |
+| `502` | Gnani Prisma request failed |
+| `503` | Gnani Prisma is not configured |
+| `504` | Gnani Prisma request timed out |
 
 ---
 
@@ -356,6 +360,33 @@ When no pharmacy profile exists: `{ needsPharmacy: true, stats: null }`.
 ---
 
 ## AI assistant (customer only)
+
+### `POST /ai/transcribe`
+
+Authenticated customer-only `multipart/form-data` upload. Forwards audio to Gnani Prisma v2.5 at `https://api.vachana.ai/stt/v3` using the server-side `X-API-Key-ID` header. No model parameter is sent.
+
+| Field | Value |
+| --- | --- |
+| `audio_file` | WAV, MP3, OGG, FLAC, AAC or M4A; max 30 seconds and 8 MB |
+| `language_code` | `en-IN` (Indian English) or `hi-IN` (Hindi/Hinglish) |
+
+Returns:
+
+```json
+{
+  "transcript": "i need 10 tablets of metformin",
+  "literal": "i need ten tablets of metformin",
+  "provider": "gnani",
+  "model": "prisma-v2.5",
+  "languageCode": "en-IN",
+  "requestId": "...",
+  "processingTimeMs": 105,
+  "latencyMs": 396,
+  "format": "wav"
+}
+```
+
+The transcript is returned for review; this endpoint never sends a chat message or changes inventory. Browser recordings are converted to 16 kHz mono WAV before upload. `GNANI_API_KEY` is read only via `process.env.GNANI_API_KEY` and is never returned to the client.
 
 ### `POST /ai/chat`
 

@@ -11,6 +11,8 @@ export class ApiError extends Error {
 }
 
 async function request(path, { method = "GET", body, headers } = {}) {
+  const isFormData =
+    typeof FormData !== "undefined" && body instanceof FormData;
   let response;
   try {
     response = await fetch(`${API_URL}${path}`, {
@@ -18,10 +20,14 @@ async function request(path, { method = "GET", body, headers } = {}) {
       credentials: "include",
       cache: "no-store",
       headers: {
-        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...(body !== undefined && !isFormData
+          ? { "Content-Type": "application/json" }
+          : {}),
         ...headers,
       },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      ...(body !== undefined
+        ? { body: isFormData ? body : JSON.stringify(body) }
+        : {}),
     });
   } catch {
     throw new ApiError(
@@ -54,6 +60,7 @@ async function request(path, { method = "GET", body, headers } = {}) {
 export const api = {
   get: (path) => request(path),
   post: (path, body) => request(path, { method: "POST", body }),
+  postForm: (path, body) => request(path, { method: "POST", body }),
   put: (path, body) => request(path, { method: "PUT", body }),
   patch: (path, body) => request(path, { method: "PATCH", body }),
   del: (path) => request(path, { method: "DELETE" }),

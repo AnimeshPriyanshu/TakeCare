@@ -10,6 +10,8 @@ npm run db:seed   # reset the seeded demo state
 npm run dev       # API :3001 + client :3000
 ```
 
+Voice input also needs `GNANI_API_KEY` in `server/.env`; restart the API after changing it. Text chat works without the key.
+
 Open <http://localhost:3000> and use the **Demo quick fill** buttons on the login page, or these accounts (password for all: **`Password123!`**):
 
 | Role | Email |
@@ -101,8 +103,14 @@ Stay signed in as Aarav and open **Assistant**.
    - It refuses medical/dosage advice and redirects to a clinician.
 5. Ask: **“Set Metformin stock to 44”**
    - Show the correction confirmation gate, then cancel it to demonstrate no-write-before-confirm.
+6. Voice input:
+   - Choose **English (India)** or **हिन्दी / Hinglish** next to the microphone.
+   - Click the microphone, say **“I need ten tablets of Metformin”** (or upload a WAV/MP3/M4A file), then stop.
+   - Show the live **Prisma v2.5** transcript appearing in the chat input. It is editable and is **not sent automatically**.
+   - Edit if needed and press Send; the existing assistant handles the approved text.
+   - Point out that the transcript alone never changes stock — an inventory action still shows the same Confirm/Cancel gate.
 
-**Talking point:** the assistant is a deterministic demo engine (`mode: "demo"`) over live data — no fabricated quantities, no unconfirmed writes, no dosage advice.
+**Talking point:** text reasoning is the deterministic demo engine (`mode: "demo"`) over live data, while voice input is a real Gnani Prisma v2.5 transcription call. Recordings are converted locally to WAV, the API key stays server-side, and no transcript can bypass the inventory confirmation gate.
 
 ---
 
@@ -112,6 +120,7 @@ Stay signed in as Aarav and open **Assistant**.
 - Full replenishment state machine with server-side authorization and invalid-transition protection.
 - Append-only inventory ledger with exactly-once receipt confirmation.
 - Grounded assistant with confirmation gates and safety guardrails.
+- Real Gnani Prisma v2.5 voice transcription with review-before-send.
 - Seeded demo data, notifications, activity feed and a responsive UI.
 
 Reset for the next audience:
@@ -133,7 +142,7 @@ npm run db:seed
 | `/customer/pharmacies` | Directory + request creation |
 | `/customer/requests` | Request list and actions |
 | `/customer/requests/:id` | Timeline, proposal response, receipt confirmation |
-| `/customer/assistant` | Demo assistant |
+| `/customer/assistant` | Demo assistant + Prisma voice input |
 | `/customer/family` | Family-member profiles |
 | `/pharmacist` | Pharmacist dashboard |
 | `/pharmacist/pharmacy` | Profile and listing status |

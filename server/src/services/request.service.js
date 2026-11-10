@@ -408,13 +408,14 @@ export async function confirmReceipt({ customerId, requestId }) {
 
     const previousStock = medicine.confirmedStock;
     const newStock = previousStock + quantity;
+    const lowAfter = newStock <= medicine.reorderThreshold;
 
     await tx.medicine.update({
       where: { id: medicine.id },
       data: {
         confirmedStock: newStock,
         lastConfirmedAt: now,
-        lowStockNotified: false,
+        lowStockNotified: lowAfter ? medicine.lowStockNotified : false,
       },
     });
 
